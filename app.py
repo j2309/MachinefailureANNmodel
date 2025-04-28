@@ -1,35 +1,57 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
+# Page configuration
+st.set_page_config(page_title="Machine Failure Prediction 🚀", page_icon="🤖", layout="wide")
+
 # Title
-st.title("🚀 Machine Failure Prediction App (Simple ANN)")
-st.write("Upload your machine sensor data and predict failures.")
+st.title("🤖 Machine Failure Prediction App (Simple ANN)")
+st.write("Upload your machine sensor data below and predict failures using a trained Artificial Neural Network (ANN) model.")
 
-# Load trained ANN model
-model = tf.keras.models.load_model('machine_failure_ann_model.h5')
+# Sidebar
+st.sidebar.header("📂 Upload CSV Data")
+uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
 
-# Load original dataset (for re-fitting scaler)
-original_data = pd.read_csv('58613010-fc8e-40ef-a8e4-4dc739caba51.csv')
+# Load trained ANN model safely
+@st.cache_resource
+def load_model():
+    try:
+        model = tf.keras.models.load_model('machine_failure_ann_model.h5')
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        st.stop()
 
-# Prepare original features and refit scaler
+model = load_model()
+
+# Load original dataset for re-fitting scaler safely
+@st.cache_data
+def load_original_data():
+    try:
+        data = pd.read_csv('Machine failure ANN/Machine Downtime.csv')
+        return data
+    except Exception as e:
+        st.error(f"Error loading dataset: {e}")
+        st.stop()
+
+original_data = load_original_data()
+
+# Prepare scaler
 X_original = original_data.drop('Failure', axis=1)
 scaler = StandardScaler()
 scaler.fit(X_original)
 
-# File uploader
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
-
+# Main logic
 if uploaded_file is not None:
     # Read uploaded data
     input_data = pd.read_csv(uploaded_file)
-    st.write("### Preview of Uploaded Data:")
-    st.dataframe(input_data.head())
+    st.subheader("🔍 Preview of Uploaded Data")
+    st.dataframe(input_data.head(), use_container_width=True)
 
-    # Scale the input features
+    # Scale input features
     input_scaled = scaler.transform(input_data)
 
     # Predict
@@ -37,8 +59,8 @@ if uploaded_file is not None:
     input_data['Failure_Predicted'] = predictions
 
     # Show results
-    st.write("### Prediction Results:")
-    st.dataframe(input_data)
+    st.subheader("🎯 Prediction Results")
+    st.dataframe(input_data, use_container_width=True)
 
     # Downloadable link
     @st.cache_data
@@ -48,17 +70,20 @@ if uploaded_file is not None:
     csv = convert_df(input_data)
 
     st.download_button(
-        label="📦 Download Predictions as CSV",
+        label="📥 Download Predictions as CSV",
         data=csv,
         file_name='machine_failure_predictions.csv',
         mime='text/csv',
     )
 
-    # Summary metrics
+    # Summary
     total_failures = int(np.sum(predictions))
-    st.success(f"Total Predicted Failures: {total_failures}")
+    st.success(f"✅ Total Predicted Failures: {total_failures}")
+
+    if total_failures > 0:
+        st.balloons()
 else:
-    st.info("Please upload a CSV file to continue.")
+    st.info("👈 Upload a CSV file from the sidebar to continue!")
 
 # Footer
 st.markdown("---")
