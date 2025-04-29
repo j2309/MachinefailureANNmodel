@@ -85,11 +85,10 @@ if st.button("Predict Downtime"):
     prediction = model.predict(scaled_data)[0][0]
     
     # Display prediction output with probability
-    downtime_probability = prediction  # Assuming prediction gives probability for downtime
-    st.markdown(f"""
-        <div class="prediction-output">
-            <h3>Prediction:</h3>
-            <p><strong>Machine Downtime: </strong> {'Yes' if downtime_probability > 0.5 else 'No'}</p>
-            <p><strong>Probability of Downtime: </strong> {downtime_probability:.2f}</p>
-        </div>
-    """, unsafe_allow_html=True)
+   result = int(prediction > 0.5)
+st.markdown(f"""
+    <div class="prediction-output">
+        <h3>Prediction Output:</h3>
+        <p><strong>{result}</strong></p>
+    </div>
+""", unsafe_allow_html=True)
