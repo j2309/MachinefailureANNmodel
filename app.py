@@ -1,90 +1,95 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
-import tensorflow as tf
-from sklearn.preprocessing import StandardScaler
+import joblib
+from tensorflow.keras.models import load_model  # type: ignore
 
-# Page configuration
-st.set_page_config(page_title="Machine Failure Prediction 🚀", page_icon="🤖", layout="wide")
+# Load model and scaler
+model = load_model('ann_model.h5')
+scaler = joblib.load('scaler.save')
 
-# Title
-st.title("🤖 Machine Failure Prediction App (Simple ANN)")
-st.write("Upload your machine sensor data below and predict failures using a trained Artificial Neural Network (ANN) model.")
+# Adding some creative CSS for styling
+st.markdown("""
+    <style>
+        body {
+            background-color: #f0f2f6;
+            font-family: 'Arial', sans-serif;
+        }
+        .title {
+            color: #2a3d66;
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .header {
+            font-size: 24px;
+            color: #0066cc;
+            margin-bottom: 20px;
+        }
+        .stButton>button {
+            background-color: #0073e6;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .stButton>button:hover {
+            background-color: #005bb5;
+        }
+        .input-container {
+            margin-bottom: 20px;
+        }
+        .input-label {
+            font-size: 16px;
+            color: #555;
+        }
+        .input-box {
+            border-radius: 5px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .prediction-output {
+            background-color: #e6f7ff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #b3d9ff;
+            margin-top: 30px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# Sidebar
-st.sidebar.header("📂 Upload CSV Data")
-uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type=["csv"])
+st.markdown('<div class="title">Machine Downtime Prediction (ANN Model)</div>', unsafe_allow_html=True)
 
-# Load trained ANN model safely
-@st.cache_resource
-def load_model():
-    try:
-        model = tf.keras.models.load_model('machine_failure_ann_model.h5')
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        st.stop()
+# User input
+features = {}
+feature_names = [
+    "Hydraulic_Pressure(bar)", "Coolant_Pressure(bar)", "Air_System_Pressure(bar)",
+    "Coolant_Temperature", "Hydraulic_Oil_Temperature(°C)", "Spindle_Bearing_Temperature(°C)",
+    "Spindle_Vibration(µm)", "Tool_Vibration(µm)", "Spindle_Speed(RPM)",
+    "Voltage(volts)", "Torque(Nm)", "Cutting(kN)"
+]
 
-model = load_model()
+thresholds = [150.0, 5.0, 7.0, 25.0, 45.0, 60.0, 10.0, 8.0, 8000.0, 400.0, 50.0, 2.5]
 
-# Load original dataset for re-fitting scaler safely
-@st.cache_data
-def load_original_data():
-    try:
-        data = pd.read_csv('Machine failure ANN/Machine Downtime.csv')
-        return data
-    except Exception as e:
-        st.error(f"Error loading dataset: {e}")
-        st.stop()
+for name, default in zip(feature_names, thresholds):
+    features[name] = st.number_input(name, value=default)
 
-original_data = load_original_data()
-
-# Prepare scaler
-X_original = original_data.drop('Failure', axis=1)
-scaler = StandardScaler()
-scaler.fit(X_original)
-
-# Main logic
-if uploaded_file is not None:
-    # Read uploaded data
-    input_data = pd.read_csv(uploaded_file)
-    st.subheader("🔍 Preview of Uploaded Data")
-    st.dataframe(input_data.head(), use_container_width=True)
-
-    # Scale input features
-    input_scaled = scaler.transform(input_data)
-
-    # Predict
-    predictions = (model.predict(input_scaled) > 0.5).astype("int32")
-    input_data['Failure_Predicted'] = predictions
-
-    # Show results
-    st.subheader("🎯 Prediction Results")
-    st.dataframe(input_data, use_container_width=True)
-
-    # Downloadable link
-    @st.cache_data
-    def convert_df(df):
-        return df.to_csv(index=False).encode('utf-8')
-
-    csv = convert_df(input_data)
-
-    st.download_button(
-        label="📥 Download Predictions as CSV",
-        data=csv,
-        file_name='machine_failure_predictions.csv',
-        mime='text/csv',
-    )
-
-    # Summary
-    total_failures = int(np.sum(predictions))
-    st.success(f"✅ Total Predicted Failures: {total_failures}")
-
-    if total_failures > 0:
-        st.balloons()
-else:
-    st.info("👈 Upload a CSV file from the sidebar to continue!")
-
-# Footer
-st.markdown("---")
-st.caption("Built with ❤️ using Streamlit and TensorFlow.")
+# Prediction
+if st.button("Predict Downtime"):
+    input_data = np.array([list(features.values())])
+    scaled_data = scaler.transform(input_data)
+    prediction = model.predict(scaled_data)[0][0]
+    
+    # Display prediction output with probability
+    downtime_probability = prediction  # Assuming prediction gives probability for downtime
+    st.markdown(f"""
+        <div class="prediction-output">
+            <h3>Prediction:</h3>
+            <p><strong>Machine Downtime: </strong> {'Yes' if downtime_probability > 0.5 else 'No'}</p>
+            <p><strong>Probability of Downtime: </strong> {downtime_probability:.2f}</p>
+        </div>
+    """, unsafe_allow_html=True)
