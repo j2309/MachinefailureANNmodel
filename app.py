@@ -53,7 +53,7 @@ st.markdown("""
             box-sizing: border-box;
         }
         .prediction-output {
-            background-color: #e6f7ff;
+            background-color: green;
             padding: 20px;
             border-radius: 8px;
             border: 1px solid #b3d9ff;
