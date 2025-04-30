@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import joblib
-from tensorflow.keras.models import load_model  # type: ignore
+from tensorflow.keras.models import load_model 
 
 # Load model and scaler
 model = load_model('ann_model.h5')
@@ -85,7 +85,7 @@ if st.button("Predict Downtime"):
     prediction = model.predict(scaled_data)[0][0]
     
     # Display prediction output with probability
-   downtime_probability = prediction  # Assuming prediction gives probability for downtime
+    downtime_probability = prediction  # Assuming prediction gives probability for downtime
     st.markdown(f"""
         <div class="prediction-output">
             <h3>Prediction:</h3>
